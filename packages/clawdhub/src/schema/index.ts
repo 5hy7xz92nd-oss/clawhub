@@ -5,7 +5,7 @@ export {
   PLATFORM_SKILL_LICENSE_NAME,
   PLATFORM_SKILL_LICENSE_SUMMARY,
   PLATFORM_SKILL_LICENSE_URL,
-} from 'clawhub-schema'
+} from './license.js'
 export { ApiRoutes, LegacyApiRoutes } from './routes.js'
 export * from './schemas.js'
 export * from './textFiles.js'
