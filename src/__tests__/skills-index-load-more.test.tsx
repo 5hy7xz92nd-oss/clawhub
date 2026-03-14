@@ -3,6 +3,7 @@ import { act, render } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  convexHttpMock,
   convexReactMocks,
   resetConvexReactMocks,
   setupDefaultConvexReactMocks,
@@ -25,7 +26,12 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('convex/react', () => ({
   useAction: (...args: unknown[]) => convexReactMocks.useAction(...args),
   useQuery: (...args: unknown[]) => convexReactMocks.useQuery(...args),
-  usePaginatedQuery: (...args: unknown[]) => convexReactMocks.usePaginatedQuery(...args),
+}))
+
+vi.mock('../../src/convex/client', () => ({
+  convexHttp: {
+    query: (...args: unknown[]) => convexHttpMock.query(...args),
+  },
 }))
 
 describe('SkillsIndex load-more observer', () => {
@@ -40,13 +46,20 @@ describe('SkillsIndex load-more observer', () => {
     vi.unstubAllGlobals()
   })
 
-  it('triggers one request for repeated intersection callbacks', async () => {
-    const loadMorePaginated = vi.fn()
-    convexReactMocks.usePaginatedQuery.mockReturnValue({
-      results: [makeListResult('skill-0', 'Skill 0')],
-      status: 'CanLoadMore',
-      loadMore: loadMorePaginated,
-    })
+  it('triggers one load-more fetch for repeated intersection callbacks', async () => {
+    // First call returns a page with a cursor, second call (load more) tracks calls
+    let loadMoreCallCount = 0
+    convexHttpMock.query
+      .mockResolvedValueOnce({
+        page: [makeListResult('skill-0', 'Skill 0')],
+        isDone: false,
+        continueCursor: 'cursor-1',
+      })
+      .mockImplementation(() => {
+        loadMoreCallCount++
+        // Never resolve to keep in loading state
+        return new Promise(() => {})
+      })
 
     type ObserverInstance = {
       callback: IntersectionObserverCallback
@@ -76,9 +89,10 @@ describe('SkillsIndex load-more observer', () => {
     )
 
     render(<SkillsIndex />)
+    await act(async () => {})
 
-    expect(observers).toHaveLength(1)
-    const observer = observers[0]
+    // Find the observer (there may be multiple from re-renders; use the last one)
+    const observer = observers[observers.length - 1]
     const entries = [{ isIntersecting: true }] as Array<IntersectionObserverEntry>
 
     await act(async () => {
@@ -87,7 +101,8 @@ describe('SkillsIndex load-more observer', () => {
       observer.callback(entries, observer as unknown as IntersectionObserver)
     })
 
-    expect(loadMorePaginated).toHaveBeenCalledTimes(1)
+    // Only one load-more fetch should have been triggered
+    expect(loadMoreCallCount).toBe(1)
   })
 })
 

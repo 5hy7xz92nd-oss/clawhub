@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  convexHttpMock,
   convexReactMocks,
   resetConvexReactMocks,
   setupDefaultConvexReactMocks,
@@ -25,7 +26,12 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('convex/react', () => ({
   useAction: (...args: unknown[]) => convexReactMocks.useAction(...args),
   useQuery: (...args: unknown[]) => convexReactMocks.useQuery(...args),
-  usePaginatedQuery: (...args: unknown[]) => convexReactMocks.usePaginatedQuery(...args),
+}))
+
+vi.mock('../../src/convex/client', () => ({
+  convexHttp: {
+    query: (...args: unknown[]) => convexHttpMock.query(...args),
+  },
 }))
 
 describe('SkillsIndex', () => {
@@ -34,12 +40,6 @@ describe('SkillsIndex', () => {
     navigateMock.mockReset()
     searchMock = {}
     setupDefaultConvexReactMocks()
-    // Default: return empty results with Exhausted status
-    convexReactMocks.usePaginatedQuery.mockReturnValue({
-      results: [],
-      status: 'Exhausted',
-      loadMore: vi.fn(),
-    })
   })
 
   afterEach(() => {
@@ -47,93 +47,42 @@ describe('SkillsIndex', () => {
     vi.unstubAllGlobals()
   })
 
-  it('requests the first skills page', () => {
+  it('requests the first skills page', async () => {
     render(<SkillsIndex />)
-    // usePaginatedQuery should be called with the API endpoint and sort/dir args
-    expect(convexReactMocks.usePaginatedQuery).toHaveBeenCalledWith(
+    await act(async () => {})
+
+    expect(convexHttpMock.query).toHaveBeenCalledWith(
       expect.anything(),
-      { sort: 'downloads', dir: 'desc', highlightedOnly: false, nonSuspiciousOnly: false },
-      { initialNumItems: 25 },
+      expect.objectContaining({
+        sort: 'downloads',
+        dir: 'desc',
+        highlightedOnly: false,
+        nonSuspiciousOnly: false,
+        paginationOpts: { cursor: null, numItems: 25 },
+      }),
     )
   })
 
-  it('renders an empty state when no skills are returned', () => {
+  it('renders an empty state when no skills are returned', async () => {
     render(<SkillsIndex />)
+    await act(async () => {})
     expect(screen.getByText('No skills match that filter.')).toBeTruthy()
   })
 
-  it('shows loading state instead of empty state when pagination is not exhausted', () => {
-    // When status is not 'Exhausted', we should show loading, not "No skills match"
-    convexReactMocks.usePaginatedQuery.mockReturnValue({
-      results: [],
-      status: 'CanLoadMore',
-      loadMore: vi.fn(),
-    })
+  it('shows loading state before fetch completes', async () => {
+    // Never resolve the query to keep the component in loading state
+    convexHttpMock.query.mockReturnValue(new Promise(() => {}))
     render(<SkillsIndex />)
-    expect(screen.getByText('Loading skills…')).toBeTruthy()
+    await act(async () => {})
+    // Header subtitle and results area both show "Loading skills…"
+    expect(screen.getAllByText('Loading skills…').length).toBeGreaterThanOrEqual(1)
     expect(screen.queryByText('No skills match that filter.')).toBeNull()
-  })
-
-  it('keeps load-more reachable when results are empty but pagination can continue', () => {
-    convexReactMocks.usePaginatedQuery.mockReturnValue({
-      results: [],
-      status: 'CanLoadMore',
-      loadMore: vi.fn(),
-    })
-    render(<SkillsIndex />)
-    expect(screen.getByRole('button', { name: 'Load more' })).toBeTruthy()
-  })
-
-  it('shows loading indicator during pagination instead of hiding load more', () => {
-    // When status is 'LoadingMore', keep showing the load more area with loading text
-    const mockEntry = {
-      skill: {
-        _id: 'test-id',
-        slug: 'test-skill',
-        displayName: 'Test Skill',
-        stats: { downloads: 0, installsAllTime: 0, stars: 0 },
-      },
-      latestVersion: null,
-      owner: null,
-      ownerHandle: null,
-    }
-    convexReactMocks.usePaginatedQuery.mockReturnValue({
-      results: [mockEntry],
-      status: 'LoadingMore',
-      loadMore: vi.fn(),
-    })
-    render(<SkillsIndex />)
-    // The load more button should still be visible with loading state
-    expect(screen.getByText('Loading…')).toBeTruthy()
-  })
-
-  it('handles LoadingMore with empty results gracefully', () => {
-    // Edge case: user changes filter while loading more, results become empty
-    convexReactMocks.usePaginatedQuery.mockReturnValue({
-      results: [],
-      status: 'LoadingMore',
-      loadMore: vi.fn(),
-    })
-    render(<SkillsIndex />)
-    // Should show loading message, not "No skills match"
-    expect(screen.getByText('Loading skills…')).toBeTruthy()
-    expect(screen.queryByText('No skills match that filter.')).toBeNull()
-    // Keep the pagination control mounted so loading can continue.
-    expect(screen.getByText('Loading…')).toBeTruthy()
   })
 
   it('shows empty state immediately when search returns no results', async () => {
-    // When searching and results are empty, show "No skills match" not "Loading"
-    // This tests the hasQuery condition in the empty state logic
     searchMock = { q: 'nonexistent-skill-xyz' }
     const actionFn = vi.fn().mockResolvedValue([])
     convexReactMocks.useAction.mockReturnValue(actionFn)
-    // Pagination is skipped in search mode, so status stays 'LoadingFirstPage'
-    convexReactMocks.usePaginatedQuery.mockReturnValue({
-      results: [],
-      status: 'LoadingFirstPage',
-      loadMore: vi.fn(),
-    })
     vi.useFakeTimers()
 
     render(<SkillsIndex />)
@@ -146,7 +95,7 @@ describe('SkillsIndex', () => {
     expect(screen.queryByText('Loading skills…')).toBeNull()
   })
 
-  it('skips list query and calls search when query is set', async () => {
+  it('skips list fetch and calls search when query is set', async () => {
     searchMock = { q: 'remind' }
     const actionFn = vi.fn().mockResolvedValue([])
     convexReactMocks.useAction.mockReturnValue(actionFn)
@@ -154,10 +103,15 @@ describe('SkillsIndex', () => {
 
     render(<SkillsIndex />)
 
-    // usePaginatedQuery should be called with 'skip' when there's a search query
-    expect(convexReactMocks.usePaginatedQuery).toHaveBeenCalledWith(expect.anything(), 'skip', {
-      initialNumItems: 25,
-    })
+    // convexHttp.query should NOT be called for list when searching
+    const listCalls = convexHttpMock.query.mock.calls.filter(
+      (call: unknown[]) => {
+        const args = call[1] as Record<string, unknown> | undefined
+        return args && 'paginationOpts' in args
+      },
+    )
+    expect(listCalls).toHaveLength(0)
+
     await act(async () => {
       await vi.runAllTimersAsync()
     })
@@ -257,28 +211,97 @@ describe('SkillsIndex', () => {
     expect(titles[1]).toBe('Newer Low Score')
   })
 
-  it('passes nonSuspiciousOnly to list query when filter is active', () => {
+  it('passes nonSuspiciousOnly to list query when filter is active', async () => {
     searchMock = { nonSuspicious: true }
     render(<SkillsIndex />)
+    await act(async () => {})
 
-    expect(convexReactMocks.usePaginatedQuery).toHaveBeenCalledWith(
+    expect(convexHttpMock.query).toHaveBeenCalledWith(
       expect.anything(),
-      { sort: 'downloads', dir: 'desc', highlightedOnly: false, nonSuspiciousOnly: true },
-      { initialNumItems: 25 },
+      expect.objectContaining({
+        sort: 'downloads',
+        dir: 'desc',
+        highlightedOnly: false,
+        nonSuspiciousOnly: true,
+      }),
     )
   })
 
-  it('passes highlightedOnly to list query when filter is active', () => {
+  it('passes highlightedOnly to list query when filter is active', async () => {
     searchMock = { highlighted: true }
     render(<SkillsIndex />)
+    await act(async () => {})
 
-    expect(convexReactMocks.usePaginatedQuery).toHaveBeenCalledWith(
+    expect(convexHttpMock.query).toHaveBeenCalledWith(
       expect.anything(),
-      { sort: 'downloads', dir: 'desc', highlightedOnly: true, nonSuspiciousOnly: false },
-      { initialNumItems: 25 },
+      expect.objectContaining({
+        sort: 'downloads',
+        dir: 'desc',
+        highlightedOnly: true,
+        nonSuspiciousOnly: false,
+      }),
     )
   })
+
+  it('shows load-more button when more results are available', async () => {
+    vi.stubGlobal('IntersectionObserver', undefined)
+    convexHttpMock.query.mockResolvedValue({
+      page: [makeListResult('skill-0', 'Skill 0')],
+      isDone: false,
+      continueCursor: 'cursor-1',
+    })
+    render(<SkillsIndex />)
+    await act(async () => {})
+
+    expect(screen.getByRole('button', { name: 'Load more' })).toBeTruthy()
+  })
+
+  it('shows loading indicator during load-more', async () => {
+    vi.stubGlobal('IntersectionObserver', undefined)
+    convexHttpMock.query
+      .mockResolvedValueOnce({
+        page: [makeListResult('skill-0', 'Skill 0')],
+        isDone: false,
+        continueCursor: 'cursor-1',
+      })
+      // Second call (load more) never resolves
+      .mockReturnValueOnce(new Promise(() => {}))
+
+    render(<SkillsIndex />)
+    await act(async () => {})
+
+    const loadMoreButton = screen.getByRole('button', { name: 'Load more' })
+    await act(async () => {
+      fireEvent.click(loadMoreButton)
+    })
+
+    expect(screen.getByText('Loading…')).toBeTruthy()
+  })
 })
+
+function makeListResult(slug: string, displayName: string) {
+  return {
+    skill: {
+      _id: `skill_${slug}`,
+      slug,
+      displayName,
+      summary: `${displayName} summary`,
+      tags: {},
+      stats: {
+        downloads: 0,
+        installsCurrent: 0,
+        installsAllTime: 0,
+        stars: 0,
+        versions: 1,
+        comments: 0,
+      },
+      createdAt: 0,
+      updatedAt: 0,
+    },
+    latestVersion: null,
+    ownerHandle: null,
+  }
+}
 
 function makeSearchResults(count: number) {
   return Array.from({ length: count }, (_, index) => ({

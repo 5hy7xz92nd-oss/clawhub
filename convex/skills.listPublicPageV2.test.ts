@@ -215,9 +215,14 @@ describe('skills.listPublicPageV2', () => {
     expect(paginateMock).toHaveBeenCalledTimes(1)
   })
 
-  it('filters out skills whose owners are deleted or banned', async () => {
+  it('filters out skills whose owners are deleted or banned when digest lacks owner info', async () => {
     const active = makeSkill('skills:active', 'active', 'users:active', 'skillVersions:1')
     const banned = makeSkill('skills:banned', 'banned', 'users:banned', 'skillVersions:2')
+    // Simulate digest row where owner info has been cleared after ban
+    delete (banned as Record<string, unknown>).ownerHandle
+    delete (banned as Record<string, unknown>).ownerName
+    delete (banned as Record<string, unknown>).ownerDisplayName
+    delete (banned as Record<string, unknown>).ownerImage
     const paginateMock = vi.fn().mockResolvedValueOnce({
       page: [banned, active],
       continueCursor: 'after-active',
@@ -369,7 +374,7 @@ describe('skills.listPublicPageV2', () => {
     expect(getMock).toHaveBeenCalledWith('skillVersions:1')
   })
 
-  it('revalidates the owner even when digest has ownerHandle', async () => {
+  it('skips db.get for owner when digest has pre-resolved ownerHandle', async () => {
     const skill = makeSkill('skills:s1', 's1', 'users:1', 'skillVersions:1')
     const paginateMock = vi.fn().mockResolvedValue({
       page: [skill],
@@ -404,7 +409,8 @@ describe('skills.listPublicPageV2', () => {
 
     expect(result.page).toHaveLength(1)
     expect(result.page[0]?.skill.slug).toBe('s1')
-    expect(getMock).toHaveBeenCalledWith('users:1')
+    // Should NOT have called db.get for the user — pre-resolved from digest
+    expect(getMock).not.toHaveBeenCalledWith('users:1')
   })
 
   it('falls back to db.get for owner when digest lacks ownerHandle', async () => {
