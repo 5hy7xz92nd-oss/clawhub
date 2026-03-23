@@ -32,11 +32,7 @@ function isMissingTableError(error: unknown, table: string) {
 }
 
 type PackageDigestSyncCtx = Pick<MutationCtx, "db">;
-<<<<<<< HEAD
-type OwnerPublisherDigestScheduleCtx = Pick<MutationCtx, "scheduler">;
-=======
 type OwnerPublisherDigestScheduleCtx = Pick<Partial<MutationCtx>, "scheduler">;
->>>>>>> cace01b (fix(publishers): skip digest scheduling without scheduler)
 type LatestPackageRelease = Pick<
   Doc<"packageReleases">,
   | "_id"
