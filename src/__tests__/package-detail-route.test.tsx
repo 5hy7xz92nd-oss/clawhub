@@ -52,14 +52,14 @@ vi.mock("../lib/packageApi", () => ({
 }));
 
 async function loadRoute() {
-  return (await import("../routes/packages/$name")).Route as unknown as {
+  return (await import("../routes/plugins/$name")).Route as unknown as {
     __config: {
       component?: ComponentType;
     };
   };
 }
 
-describe("package detail route", () => {
+describe("plugin detail route", () => {
   beforeEach(() => {
     paramsMock = { name: "demo-plugin" };
     loaderDataMock = {
@@ -86,7 +86,7 @@ describe("package detail route", () => {
     };
   });
 
-  it("hides download actions when the package has no latest release", async () => {
+  it("hides download actions when the plugin has no latest release", async () => {
     const route = await loadRoute();
     const Component = route.__config.component as ComponentType;
 

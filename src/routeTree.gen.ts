@@ -20,9 +20,12 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SoulsIndexRouteImport } from './routes/souls/index'
 import { Route as SkillsIndexRouteImport } from './routes/skills/index'
+import { Route as PluginsIndexRouteImport } from './routes/plugins/index'
 import { Route as PackagesIndexRouteImport } from './routes/packages/index'
 import { Route as UHandleRouteImport } from './routes/u/$handle'
 import { Route as SoulsSlugRouteImport } from './routes/souls/$slug'
+import { Route as PluginsNewRouteImport } from './routes/plugins/new'
+import { Route as PluginsNameRouteImport } from './routes/plugins/$name'
 import { Route as PackagesNewRouteImport } from './routes/packages/new'
 import { Route as PackagesNameRouteImport } from './routes/packages/$name'
 import { Route as CliAuthRouteImport } from './routes/cli/auth'
@@ -83,6 +86,11 @@ const SkillsIndexRoute = SkillsIndexRouteImport.update({
   path: '/skills/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PluginsIndexRoute = PluginsIndexRouteImport.update({
+  id: '/plugins/',
+  path: '/plugins/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PackagesIndexRoute = PackagesIndexRouteImport.update({
   id: '/packages/',
   path: '/packages/',
@@ -96,6 +104,16 @@ const UHandleRoute = UHandleRouteImport.update({
 const SoulsSlugRoute = SoulsSlugRouteImport.update({
   id: '/souls/$slug',
   path: '/souls/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PluginsNewRoute = PluginsNewRouteImport.update({
+  id: '/plugins/new',
+  path: '/plugins/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PluginsNameRoute = PluginsNameRouteImport.update({
+  id: '/plugins/$name',
+  path: '/plugins/$name',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PackagesNewRoute = PackagesNewRouteImport.update({
@@ -133,9 +151,12 @@ export interface FileRoutesByFullPath {
   '/cli/auth': typeof CliAuthRoute
   '/packages/$name': typeof PackagesNameRoute
   '/packages/new': typeof PackagesNewRoute
+  '/plugins/$name': typeof PluginsNameRoute
+  '/plugins/new': typeof PluginsNewRoute
   '/souls/$slug': typeof SoulsSlugRoute
   '/u/$handle': typeof UHandleRoute
   '/packages/': typeof PackagesIndexRoute
+  '/plugins/': typeof PluginsIndexRoute
   '/skills/': typeof SkillsIndexRoute
   '/souls/': typeof SoulsIndexRoute
 }
@@ -153,9 +174,12 @@ export interface FileRoutesByTo {
   '/cli/auth': typeof CliAuthRoute
   '/packages/$name': typeof PackagesNameRoute
   '/packages/new': typeof PackagesNewRoute
+  '/plugins/$name': typeof PluginsNameRoute
+  '/plugins/new': typeof PluginsNewRoute
   '/souls/$slug': typeof SoulsSlugRoute
   '/u/$handle': typeof UHandleRoute
   '/packages': typeof PackagesIndexRoute
+  '/plugins': typeof PluginsIndexRoute
   '/skills': typeof SkillsIndexRoute
   '/souls': typeof SoulsIndexRoute
 }
@@ -174,9 +198,12 @@ export interface FileRoutesById {
   '/cli/auth': typeof CliAuthRoute
   '/packages/$name': typeof PackagesNameRoute
   '/packages/new': typeof PackagesNewRoute
+  '/plugins/$name': typeof PluginsNameRoute
+  '/plugins/new': typeof PluginsNewRoute
   '/souls/$slug': typeof SoulsSlugRoute
   '/u/$handle': typeof UHandleRoute
   '/packages/': typeof PackagesIndexRoute
+  '/plugins/': typeof PluginsIndexRoute
   '/skills/': typeof SkillsIndexRoute
   '/souls/': typeof SoulsIndexRoute
 }
@@ -196,9 +223,12 @@ export interface FileRouteTypes {
     | '/cli/auth'
     | '/packages/$name'
     | '/packages/new'
+    | '/plugins/$name'
+    | '/plugins/new'
     | '/souls/$slug'
     | '/u/$handle'
     | '/packages/'
+    | '/plugins/'
     | '/skills/'
     | '/souls/'
   fileRoutesByTo: FileRoutesByTo
@@ -216,9 +246,12 @@ export interface FileRouteTypes {
     | '/cli/auth'
     | '/packages/$name'
     | '/packages/new'
+    | '/plugins/$name'
+    | '/plugins/new'
     | '/souls/$slug'
     | '/u/$handle'
     | '/packages'
+    | '/plugins'
     | '/skills'
     | '/souls'
   id:
@@ -236,9 +269,12 @@ export interface FileRouteTypes {
     | '/cli/auth'
     | '/packages/$name'
     | '/packages/new'
+    | '/plugins/$name'
+    | '/plugins/new'
     | '/souls/$slug'
     | '/u/$handle'
     | '/packages/'
+    | '/plugins/'
     | '/skills/'
     | '/souls/'
   fileRoutesById: FileRoutesById
@@ -257,9 +293,12 @@ export interface RootRouteChildren {
   CliAuthRoute: typeof CliAuthRoute
   PackagesNameRoute: typeof PackagesNameRoute
   PackagesNewRoute: typeof PackagesNewRoute
+  PluginsNameRoute: typeof PluginsNameRoute
+  PluginsNewRoute: typeof PluginsNewRoute
   SoulsSlugRoute: typeof SoulsSlugRoute
   UHandleRoute: typeof UHandleRoute
   PackagesIndexRoute: typeof PackagesIndexRoute
+  PluginsIndexRoute: typeof PluginsIndexRoute
   SkillsIndexRoute: typeof SkillsIndexRoute
   SoulsIndexRoute: typeof SoulsIndexRoute
 }
@@ -343,6 +382,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SkillsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/plugins/': {
+      id: '/plugins/'
+      path: '/plugins'
+      fullPath: '/plugins/'
+      preLoaderRoute: typeof PluginsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/packages/': {
       id: '/packages/'
       path: '/packages'
@@ -362,6 +408,20 @@ declare module '@tanstack/react-router' {
       path: '/souls/$slug'
       fullPath: '/souls/$slug'
       preLoaderRoute: typeof SoulsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plugins/new': {
+      id: '/plugins/new'
+      path: '/plugins/new'
+      fullPath: '/plugins/new'
+      preLoaderRoute: typeof PluginsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plugins/$name': {
+      id: '/plugins/$name'
+      path: '/plugins/$name'
+      fullPath: '/plugins/$name'
+      preLoaderRoute: typeof PluginsNameRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/packages/new': {
@@ -409,9 +469,12 @@ const rootRouteChildren: RootRouteChildren = {
   CliAuthRoute: CliAuthRoute,
   PackagesNameRoute: PackagesNameRoute,
   PackagesNewRoute: PackagesNewRoute,
+  PluginsNameRoute: PluginsNameRoute,
+  PluginsNewRoute: PluginsNewRoute,
   SoulsSlugRoute: SoulsSlugRoute,
   UHandleRoute: UHandleRoute,
   PackagesIndexRoute: PackagesIndexRoute,
+  PluginsIndexRoute: PluginsIndexRoute,
   SkillsIndexRoute: SkillsIndexRoute,
   SoulsIndexRoute: SoulsIndexRoute,
 }

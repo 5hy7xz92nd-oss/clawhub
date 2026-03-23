@@ -48,7 +48,7 @@ vi.mock("../lib/packageApi", () => ({
 }));
 
 async function loadRoute() {
-  return (await import("../routes/packages/index")).Route as unknown as {
+  return (await import("../routes/plugins/index")).Route as unknown as {
     __config: {
       loader?: (args: { deps: Record<string, unknown> }) => Promise<unknown>;
       component?: ComponentType;
@@ -57,7 +57,7 @@ async function loadRoute() {
   };
 }
 
-describe("packages route", () => {
+describe("plugins route", () => {
   beforeEach(() => {
     fetchPackagesMock.mockReset();
     navigateMock.mockReset();
@@ -65,15 +65,15 @@ describe("packages route", () => {
     loaderDataMock = { items: [], nextCursor: null };
   });
 
-  it("preserves skill family filters in search state", async () => {
+  it("rejects skill family filter in search state", async () => {
     const route = await loadRoute();
     const validateSearch = route.__config.validateSearch as (search: Record<string, unknown>) => Record<string, unknown>;
 
     expect(validateSearch({ family: "skill", q: "demo" })).toEqual({
-      family: "skill",
+      family: undefined,
       q: "demo",
       cursor: undefined,
-      official: undefined,
+      verified: undefined,
       executesCode: undefined,
     });
   });
@@ -134,12 +134,22 @@ describe("packages route", () => {
     });
   });
 
-  it("renders the Skills family option", async () => {
+  it("filters out skills from loader results", async () => {
+    fetchPackagesMock.mockResolvedValue({
+      items: [
+        { name: "my-skill", displayName: "My Skill", family: "skill", channel: "community", isOfficial: false, createdAt: 1, updatedAt: 1 },
+        { name: "my-plugin", displayName: "My Plugin", family: "code-plugin", channel: "community", isOfficial: false, createdAt: 1, updatedAt: 1 },
+      ],
+      nextCursor: null,
+    });
     const route = await loadRoute();
-    const Component = route.__config.component as ComponentType;
+    const loader = route.__config.loader as (args: {
+      deps: Record<string, unknown>;
+    }) => Promise<{ items: Array<{ name: string }>; nextCursor: string | null }>;
 
-    render(<Component />);
+    const result = await loader({ deps: {} });
 
-    expect(screen.getByRole("option", { name: "Skills" })).toBeTruthy();
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].name).toBe("my-plugin");
   });
 });

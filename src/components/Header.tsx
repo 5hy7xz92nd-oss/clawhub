@@ -93,7 +93,7 @@ export default function Header() {
               Skills
             </Link>
           )}
-          {isSoulMode ? null : <Link to="/packages">Packages</Link>}
+          {isSoulMode ? null : <Link to="/plugins">Plugins</Link>}
           <Link to="/upload" search={{ updateSlug: undefined }}>
             Upload
           </Link>
@@ -176,7 +176,7 @@ export default function Header() {
                 </DropdownMenuItem>
                 {isSoulMode ? null : (
                   <DropdownMenuItem asChild>
-                    <Link to="/packages">Packages</Link>
+                    <Link to="/plugins">Plugins</Link>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem asChild>

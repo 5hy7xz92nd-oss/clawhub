@@ -22,7 +22,7 @@ vi.mock("../lib/useAuthStatus", () => ({
   useAuthStatus: () => useAuthStatusMock(),
 }));
 
-import { Route } from "../routes/packages/new";
+import { Route } from "../routes/plugins/new";
 
 function renderPublishRoute() {
   const route = Route as unknown as {
@@ -47,7 +47,7 @@ function getFileInput() {
   return input;
 }
 
-describe("packages publish route", () => {
+describe("plugins publish route", () => {
   beforeEach(() => {
     generateUploadUrl.mockReset();
     publishRelease.mockReset();
@@ -74,12 +74,12 @@ describe("packages publish route", () => {
     vi.unstubAllGlobals();
   });
 
-  it("registers the publish form on /packages/new", () => {
+  it("registers the publish form on /plugins/new", () => {
     const route = Route as unknown as {
       __path: string;
     };
 
-    expect(route.__path).toBe("/packages/new");
+    expect(route.__path).toBe("/plugins/new");
   });
 
   it("publishes a code plugin folder with source metadata and normalized file paths", async () => {
