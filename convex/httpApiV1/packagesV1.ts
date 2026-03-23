@@ -687,7 +687,7 @@ export async function packagesGetRouterV1Handler(ctx: ActionCtx, request: Reques
   const segments = getPathSegments(request, "/api/v1/packages/");
   if (segments.length === 0) return text("Not found", 404);
 
-  const rateKind = segments[1] === "file" || segments[1] === "download" ? "download" : "read";
+  const rateKind = segments[1] === "download" ? "download" : "read";
   const rate = await applyRateLimit(ctx, request, rateKind);
   if (!rate.ok) return rate.response;
 

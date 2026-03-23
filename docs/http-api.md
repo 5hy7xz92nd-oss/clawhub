@@ -346,6 +346,7 @@ Query params:
 Notes:
 
 - Defaults to the latest release.
+- Uses the read rate bucket, not the download bucket.
 - Binary files return `415`.
 - File size limit: 200KB.
 - Private packages return `404` unless the caller is the owner.
