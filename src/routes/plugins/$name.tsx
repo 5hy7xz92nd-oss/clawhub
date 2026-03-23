@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -10,6 +11,7 @@ import {
   type PackageVersionDetail,
 } from "../../lib/packageApi";
 import { familyLabel, packageCapabilityLabel } from "../../lib/packageLabels";
+import { useAuthStatus } from "../../lib/useAuthStatus";
 
 type PluginDetailLoaderData = {
   detail: PackageDetailResponse;
@@ -74,9 +76,50 @@ function VerifiedBadge() {
 
 function PluginDetailRoute() {
   const { name } = Route.useParams();
-  const { detail, version, readme } = Route.useLoaderData() as PluginDetailLoaderData;
+  const loaderData = Route.useLoaderData() as PluginDetailLoaderData;
+  const { isAuthenticated, isLoading } = useAuthStatus();
+  const [recoveredData, setRecoveredData] = useState<PluginDetailLoaderData | null>(null);
+  const [isRecovering, setIsRecovering] = useState(false);
+
+  useEffect(() => {
+    if (loaderData.detail.package || isLoading || !isAuthenticated) return;
+    let cancelled = false;
+    setIsRecovering(true);
+    setRecoveredData(null);
+
+    void (async () => {
+      const detail = await fetchPackageDetail(name);
+      const version =
+        detail.package?.latestVersion
+          ? await fetchPackageVersion(name, detail.package.latestVersion)
+          : null;
+      const readme = await fetchPackageReadme(name, detail.package?.latestVersion);
+      if (!cancelled) {
+        setRecoveredData({ detail, version, readme });
+      }
+    })()
+      .catch(() => {
+        if (!cancelled) setRecoveredData(null);
+      })
+      .finally(() => {
+        if (!cancelled) setIsRecovering(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [name, loaderData.detail.package, isAuthenticated, isLoading]);
+
+  const { detail, version, readme } = recoveredData ?? loaderData;
 
   if (!detail.package) {
+    if (isLoading || isRecovering) {
+      return (
+        <main className="section">
+          <div className="card">Checking plugin access…</div>
+        </main>
+      );
+    }
     return (
       <main className="section">
         <div className="card">Plugin not found.</div>

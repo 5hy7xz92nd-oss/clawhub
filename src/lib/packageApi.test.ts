@@ -250,6 +250,16 @@ describe("fetchPackages", () => {
     expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
+  it("returns null when README access is blocked pending scan", async () => {
+    vi.stubEnv("VITE_CONVEX_URL", "https://registry.example");
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("pending scan", { status: 423 }));
+
+    await expect(fetchPackageReadme("demo-plugin", "1.0.0")).resolves.toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("throws when README fetch fails for reasons other than 404", async () => {
     vi.stubEnv("VITE_CONVEX_URL", "https://registry.example");
     const fetchMock = vi
