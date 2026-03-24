@@ -1332,16 +1332,32 @@ export const getPackageReleaseScanBackfillBatchInternal = internalQuery({
   args: {
     cursor: v.optional(v.number()),
     batchSize: v.optional(v.number()),
+    prioritizeRecent: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const batchSize = Math.max(1, Math.min(args.batchSize ?? 50, 200));
     const cursor = args.cursor ?? 0;
+    const prioritizeRecent = args.prioritizeRecent ?? true;
 
-    const releases = await ctx.db
-      .query("packageReleases")
-      .withIndex("by_creation_time", (q) => q.gt("_creationTime", cursor))
-      .order("asc")
-      .take(batchSize * 3);
+    const [recentReleases, backlogReleases] = await Promise.all([
+      prioritizeRecent
+        ? ctx.db.query("packageReleases").order("desc").take(batchSize * 2)
+        : Promise.resolve([]),
+      ctx.db
+        .query("packageReleases")
+        .withIndex("by_creation_time", (q) => q.gt("_creationTime", cursor))
+        .order("asc")
+        .take(batchSize * 3),
+    ]);
+
+    const releases = [
+      ...recentReleases,
+      ...backlogReleases.filter(
+        (release, index, all) =>
+          recentReleases.findIndex((candidate) => candidate._id === release._id) === -1 &&
+          all.findIndex((candidate) => candidate._id === release._id) === index,
+      ),
+    ];
 
     const results: Array<{
       releaseId: Id<"packageReleases">;
@@ -1377,7 +1393,7 @@ export const getPackageReleaseScanBackfillBatchInternal = internalQuery({
     return {
       releases: results,
       nextCursor,
-      done: releases.length < batchSize * 3,
+      done: backlogReleases.length < batchSize * 3,
     };
   },
 });
@@ -2013,6 +2029,7 @@ export const backfillPackageReleaseScansInternal = internalAction({
     const batch = (await runQueryRef(ctx, internalRefs.packages.getPackageReleaseScanBackfillBatchInternal, {
       cursor: args.cursor,
       batchSize,
+      prioritizeRecent: args.cursor === undefined,
     })) as {
       releases: Array<{
         releaseId: Id<"packageReleases">;
